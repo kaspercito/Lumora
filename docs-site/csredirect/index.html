@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Abrir en Lumora</title>
+<style>body{font-family:sans-serif;background:#0f0b1e;color:#fff;text-align:center;padding:4rem 1rem}a{color:#7dd3fc}</style></head>
+<body><h2>Abriendo Lumora…</h2><p>Si no se abre, <a id="l" href="#">toca aquí</a>.</p>
+<script>
+  var t = new URLSearchParams(location.search).get("redirectto");
+  if (t) { document.getElementById("l").href = t; location.href = t; }
+</script></body></html>
