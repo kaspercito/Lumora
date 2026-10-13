@@ -225,6 +225,7 @@ android {
     buildFeatures {
         buildConfig = true
         viewBinding = true
+        resValues = true
     }
 
     packaging {
