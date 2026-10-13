@@ -64,7 +64,7 @@ open class TmdbProvider : MainAPI() {
     override val hasMainPage = true
     override val providerType = ProviderType.MetaProvider
 
-    private val tmdbApiKey = "f624563071d2ccfcd26a21877d0e33dd"
+    private val tmdbApiKey = "e6333b32409e02a4a6eba6fb7ff866bb"
     private val tmdbApiUrl = "https://api.themoviedb.org/3"
 
     @Serializable

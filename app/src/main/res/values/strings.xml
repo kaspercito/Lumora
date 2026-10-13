@@ -271,6 +271,7 @@
     <string name="app_storage">App</string>
     <!--plural-->
     <string name="movies">Movies</string>
+    <string name="anime_movies">Anime Movies</string>
     <string name="tv_series">TV Series</string>
     <string name="cartoons">Cartoons</string>
     <string name="anime">Anime</string>

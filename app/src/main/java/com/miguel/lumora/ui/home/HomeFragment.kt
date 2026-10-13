@@ -356,7 +356,9 @@ class HomeFragment : BaseFragment<FragmentHomeBinding>(
             if (header == null) return
             val pairList = getPairList(header)
             for ((button, types) in pairList) {
-                val isValid = validTypes.any { types.contains(it) }
+                // Lumora: el chip NSFW nunca se muestra
+                val isNsfwChip = types.contains(TvType.NSFW)
+                val isValid = !isNsfwChip && validTypes.any { types.contains(it) }
                 button?.isVisible = isValid
                 button?.isChecked = isValid && selectedTypes.any { types.contains(it) }
                 button?.isFocusable = true

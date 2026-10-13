@@ -11,6 +11,7 @@ import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.databinding.FragmentSetupMediaBinding
 import com.lagradost.cloudstream3.mvvm.safe
 import com.lagradost.cloudstream3.ui.BaseFragment
+import com.lagradost.cloudstream3.ui.settings.localizedName
 import com.lagradost.cloudstream3.utils.DataStoreHelper
 import com.lagradost.cloudstream3.utils.UIHelper.fixSystemBarsPadding
 
@@ -31,9 +32,9 @@ class SetupFragmentMedia : BaseFragment<FragmentSetupMediaBinding>(
             val arrayAdapter =
                 ArrayAdapter<String>(ctx, R.layout.sort_bottom_single_choice)
 
-            val sortedTypes = enumValues<TvType>().sorted()
+            val sortedTypes = enumValues<TvType>().sorted().filter { it != TvType.NSFW }
 
-            arrayAdapter.addAll(sortedTypes.map { it.name })
+            arrayAdapter.addAll(sortedTypes.map { it.localizedName(ctx) })
             binding.apply {
                 listview1.let {
                     it.adapter = arrayAdapter

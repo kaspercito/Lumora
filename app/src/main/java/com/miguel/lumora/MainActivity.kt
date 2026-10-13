@@ -1192,8 +1192,8 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener, BiometricCa
         setLastError(this)
 
         val settingsForProvider = SettingsJson()
-        settingsForProvider.enableAdult =
-            settingsManager.getBoolean(getString(R.string.enable_nsfw_on_providers_key), false)
+        // Lumora: el contenido NSFW está desactivado de forma permanente
+        settingsForProvider.enableAdult = false
 
         MainAPI.settingsForProvider = settingsForProvider
 

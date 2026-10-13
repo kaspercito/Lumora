@@ -225,7 +225,7 @@ android {
     buildFeatures {
         buildConfig = true
         viewBinding = true
-        resValues = true
+        resValues = true // Lumora: necesario para resValue("lumora_repo_url") en defaultConfig
     }
 
     packaging {

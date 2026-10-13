@@ -51,7 +51,6 @@
         <item>@string/disable</item>
         <item>@string/subtitles_filter_lang</item>
         <item>@string/all</item>
-        <item>@string/nsfw</item>
     </array>
 
     <array name="title_info_pref_names">

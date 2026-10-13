@@ -77,18 +77,18 @@ class SettingsProviders : BasePreferenceFragmentCompat() {
         }
 
         getPref(R.string.prefer_media_type_key)?.setOnPreferenceClickListener {
-            val names = enumValues<TvType>().sorted().map { it.name }
-            val default =
-                enumValues<TvType>().sorted().filter { it != TvType.NSFW }.map { it.ordinal }
-            val defaultSet = default.map { it.toString() }.toSet()
-            val currentList = try {
+            // Lumora: sin NSFW y con nombres traducidos
+            val types = enumValues<TvType>().sorted().filter { it != TvType.NSFW }
+            val names = types.map { it.localizedName(requireContext()) }
+            val defaultSet = types.map { it.ordinal.toString() }.toSet()
+            val storedSet = try {
                 settingsManager.getStringSet(getString(R.string.prefer_media_type_key), defaultSet)
-                    ?.map {
-                        it.toInt()
-                    }
             } catch (e: Throwable) {
                 null
-            } ?: default
+            } ?: defaultSet
+            val currentList = types.mapIndexedNotNull { index, type ->
+                if (storedSet.contains(type.ordinal.toString())) index else null
+            }
 
             activity?.showMultiDialog(
                 names,
@@ -99,7 +99,7 @@ class SettingsProviders : BasePreferenceFragmentCompat() {
                 settingsManager.edit {
                     putStringSet(
                         getString(R.string.prefer_media_type_key),
-                        selectedList.map { it.toString() }.toMutableSet()
+                        selectedList.map { types[it].ordinal.toString() }.toMutableSet()
                     )
                 }
                 DataStoreHelper.currentHomePage = null
