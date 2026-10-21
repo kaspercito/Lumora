@@ -55,7 +55,7 @@ object PluginManager {
 
     private val baseDir: File by lazy {
         val appData = System.getenv("APPDATA")
-        File(if (appData != null) File(appData, "Lumora") else File(System.getProperty("user.home"), ".lumora"))
+        if (appData != null) File(appData, "Lumora") else File(System.getProperty("user.home"), ".lumora")
     }
     private val pluginsDir get() = File(baseDir, "plugins").apply { mkdirs() }
     private val cacheDir get() = File(baseDir, "plugin-cache").apply { mkdirs() }
