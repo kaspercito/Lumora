@@ -20,6 +20,11 @@ kotlin {
             }
             implementation(project(":shared"))
             implementation(project(":library"))
+            // Reproductor: necesita VLC (64 bits) instalado en el PC
+            implementation("uk.co.caprica:vlcj:4.8.3")
+            // Convierte el DEX (Android) de los plugins .cs3 a bytecode JVM
+            implementation("de.femtopedia.dex2jar:dex-translator:2.4.38")
+            implementation(libs.jackson.module.kotlin)
         }
     }
 }
@@ -35,6 +40,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Lumora"
+            modules("java.net.http", "java.naming", "java.sql", "jdk.unsupported")
             // El MSI exige MAJOR.MINOR.BUILD: se toma de versionName (gradle/libs.versions.toml)
             packageVersion = libs.versions.versionName.get()
 
@@ -46,8 +52,7 @@ compose.desktop {
                 iconFile.set(iconsRoot.resolve("icon-windows.ico"))
                 menuGroup = "Lumora"
                 shortcut = true
-                // see https://wixtoolset.org/documentation/manual/v3/howtos/general/generate_guids.html
-                // GUID fijo: permite que cada MSI nuevo actualice al instalado en vez de instalarse al lado
+                // GUID fijo: cada MSI nuevo actualiza al instalado en vez de instalarse al lado
                 upgradeUuid = "a635097b-9164-41cf-8ed4-e1b4c74072bf"
             }
             linux {
