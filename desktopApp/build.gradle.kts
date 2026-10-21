@@ -34,18 +34,21 @@ compose.desktop {
         mainClass = "com.lagradost.cloudstream4.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "CloudStream"
-            packageVersion = "1.0.0"
+            packageName = "Lumora"
+            // El MSI exige MAJOR.MINOR.BUILD: se toma de versionName (gradle/libs.versions.toml)
+            packageVersion = libs.versions.versionName.get()
 
-            val iconsRoot = project.file("desktop-icons")
+            val iconsRoot = project.file("src/desktop-icons")
             macOS {
                 // iconFile.set(iconsRoot.resolve("icon-mac.icns"))
             }
             windows {
                 iconFile.set(iconsRoot.resolve("icon-windows.ico"))
-                // menuGroup = "Compose Examples"
+                menuGroup = "Lumora"
+                shortcut = true
                 // see https://wixtoolset.org/documentation/manual/v3/howtos/general/generate_guids.html
-                // upgradeUuid = ""
+                // GUID fijo: permite que cada MSI nuevo actualice al instalado en vez de instalarse al lado
+                upgradeUuid = "a635097b-9164-41cf-8ed4-e1b4c74072bf"
             }
             linux {
                 iconFile.set(iconsRoot.resolve("icon-linux.png"))
