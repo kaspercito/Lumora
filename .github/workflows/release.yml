@@ -64,7 +64,7 @@ jobs:
         if: steps.ver.outputs.exists == 'false'
         run: |
           chmod +x gradlew
-          ./gradlew assembleStableRelease
+          ./gradlew assembleStableRelease --stacktrace
         env:
           LUMORA_KEYSTORE_PASSWORD: ${{ secrets.LUMORA_KEYSTORE_PASSWORD }}
           LUMORA_KEY_ALIAS: ${{ secrets.LUMORA_KEY_ALIAS }}
