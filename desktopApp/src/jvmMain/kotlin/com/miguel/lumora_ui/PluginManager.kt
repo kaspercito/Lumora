@@ -165,22 +165,56 @@ object PluginManager {
         } catch (t: Throwable) {
             // NoClassDefFoundError etc. are Errors, not Exceptions: catch everything per plugin
             val cause = generateSequence(t) { it.cause }.last()
-            installed[key] = "${cause::class.simpleName}: ${cause.message}"
+            val msg = cause.message.orEmpty()
+            installed[key] = if (cause is NoClassDefFoundError || cause is ClassNotFoundException) {
+                if (msg.startsWith("android") || msg.contains("androidx"))
+                    "usa funciones de Android no disponibles en Windows ($msg)"
+                else "falta una clase: $msg"
+            } else {
+                "${cause::class.simpleName}: $msg"
+            }
         }
     }
 
     /**
      * Calls dex-translator through reflection so a different version of its API can never stop
-     * the whole app from compiling; if the call shape is wrong, the error is shown per plugin.
+     * the whole app from compiling. The class has lived under different packages across forks, so
+     * the known names are tried in order; if none exists the error lists what the jar really has.
      */
     private fun dexToJar(dex: File, jar: File) {
-        val cls = Class.forName("de.femtopedia.dex2jar.Dex2jar")
-        val builder = cls.getMethod("from", File::class.java).invoke(null, dex)
+        val names = listOf(
+            "com.googlecode.d2j.dex.Dex2jar",
+            "de.femtopedia.dex2jar.Dex2jar",
+            "com.googlecode.dex2jar.Dex2jar",
+        )
+        val cls = names.firstNotNullOfOrNull { runCatching { Class.forName(it) }.getOrNull() }
+            ?: error("No encontré la clase Dex2jar. Candidatas en el jar: ${scanForDex2jar()}")
+        val from = cls.methods.firstOrNull {
+            it.name == "from" && java.lang.reflect.Modifier.isStatic(it.modifiers) &&
+                it.parameterTypes.size == 1 && it.parameterTypes[0] == File::class.java
+        } ?: cls.methods.firstOrNull {
+            it.name == "from" && java.lang.reflect.Modifier.isStatic(it.modifiers) &&
+                it.parameterTypes.size == 1 && it.parameterTypes[0] == Path::class.java
+        } ?: error("${cls.name}.from(File|Path) no existe")
+        val builder = from.invoke(null, if (from.parameterTypes[0] == File::class.java) dex else dex.toPath())
         val to = cls.methods.firstOrNull {
-            it.name == "to" && it.parameterTypes.size == 1 &&
-                (it.parameterTypes[0] == Path::class.java || it.parameterTypes[0] == File::class.java)
-        } ?: error("Dex2jar.to(...) not found")
-        val arg: Any = if (to.parameterTypes[0] == Path::class.java) jar.toPath() else jar
-        to.invoke(builder, arg)
+            it.name == "to" && it.parameterTypes.size == 1 && it.parameterTypes[0] == Path::class.java
+        } ?: cls.methods.firstOrNull {
+            it.name == "to" && it.parameterTypes.size == 1 && it.parameterTypes[0] == File::class.java
+        } ?: error("${cls.name}.to(Path|File) no existe")
+        to.invoke(builder, if (to.parameterTypes[0] == Path::class.java) jar.toPath() else jar)
     }
+
+    /** Diagnostic only: names of classes called Dex2jar* found in the app's jars. */
+    private fun scanForDex2jar(): String = runCatching {
+        System.getProperty("java.class.path").orEmpty().split(File.pathSeparator)
+            .filter { it.endsWith(".jar") && File(it).exists() }
+            .flatMap { path ->
+                ZipFile(path).use { zip ->
+                    zip.entries().asSequence().map { it.name }
+                        .filter { it.endsWith(".class") && it.substringAfterLast('/').startsWith("Dex2jar") }
+                        .map { it.removeSuffix(".class").replace('/', '.') }.toList()
+                }
+            }.joinToString().ifBlank { "ninguna" }
+    }.getOrDefault("?")
 }

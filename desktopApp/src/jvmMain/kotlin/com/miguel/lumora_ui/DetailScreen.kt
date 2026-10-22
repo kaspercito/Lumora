@@ -14,12 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -42,25 +40,21 @@ import com.lagradost.cloudstream3.SearchResponse
 import com.lagradost.cloudstream3.TvSeriesLoadResponse
 import com.lagradost.cloudstream4.compose.BlackButton
 import com.lagradost.cloudstream4.compose.WhiteButton
-import com.lagradost.cloudstream4.generated.resources.add_to_library
-import com.lagradost.cloudstream4.generated.resources.remove_from_library
 import com.lagradost.cloudstream4.generated.resources.Res
-import com.lagradost.cloudstream4.generated.resources.no_providers
-import com.lagradost.cloudstream4.generated.resources.play
-import com.lagradost.cloudstream4.generated.resources.arrow_back
-import com.lagradost.cloudstream4.generated.resources.back
+import com.lagradost.cloudstream4.generated.resources.add_to_library
 import com.lagradost.cloudstream4.generated.resources.cast
 import com.lagradost.cloudstream4.generated.resources.episode_n
 import com.lagradost.cloudstream4.generated.resources.episodes
-import com.lagradost.cloudstream4.generated.resources.error_loading
 import com.lagradost.cloudstream4.generated.resources.minutes_n
+import com.lagradost.cloudstream4.generated.resources.no_providers
+import com.lagradost.cloudstream4.generated.resources.play
 import com.lagradost.cloudstream4.generated.resources.recommendations
+import com.lagradost.cloudstream4.generated.resources.remove_from_library
 import com.lagradost.cloudstream4.generated.resources.season_n
 import kotlinx.coroutines.CancellationException
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
-/** Detail page of a movie or series (phase 3). Playback comes in a later phase. */
+/** Detail page of a movie or series. */
 @Composable
 fun DetailScreen(
     item: SearchResponse,
@@ -76,15 +70,13 @@ fun DetailScreen(
             if (loaded != null) LoadState.Ready(loaded) else LoadState.Error("—")
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
-            LoadState.Error(e.message ?: e.toString())
+        } catch (e: Throwable) {
+            LoadState.Error(e.message ?: e::class.simpleName.orEmpty())
         }
     }
 
     Column(Modifier.fillMaxSize()) {
-        IconButton(onClick = onBack, modifier = Modifier.padding(4.dp)) {
-            Icon(painterResource(Res.drawable.arrow_back), contentDescription = stringResource(Res.string.back))
-        }
+        ScreenHeader(title = item.name, onBack = onBack)
         when (val current = state) {
             is LoadState.Loading -> CenteredLoading()
             is LoadState.Error -> CenteredError(current.message) { reload++ }
@@ -102,46 +94,49 @@ private fun DetailContent(
 ) {
     val episodes: List<Episode> = (load as? TvSeriesLoadResponse)?.episodes.orEmpty()
     val bySeason = episodes.groupBy { it.season ?: 1 }.toSortedMap()
-    val meta = listOfNotNull(
-        load.year?.toString(),
-        load.duration?.let { stringResource(Res.string.minutes_n, it) },
-        load.score?.toStringNull(0.1, 10)?.let { "★ $it" },
-        load.contentRating,
-    ).joinToString("  ·  ")
+    val minutesLabel = load.duration?.let { stringResource(Res.string.minutes_n, it) }
+    val scoreLabel = runCatching { load.score?.toStringNull(0.1, 10) }.getOrNull()?.let { "★ $it" }
+    val meta = listOfNotNull(load.year?.toString(), minutesLabel, scoreLabel, load.contentRating)
+        .joinToString("  ·  ")
+    val isMovie = load is MovieLoadResponse
+    val canPlay = !DesktopProviders.isEmpty
+    val saved = LibraryStore.contains(item.url)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
+        // Backdrop, the same wide image the mobile detail page opens with
+        (load.backgroundPosterUrl ?: load.posterUrl)?.let { backdrop ->
+            item {
+                AsyncImage(
+                    model = backdrop,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .padding(horizontal = ScreenPadding)
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                )
+            }
+        }
         item {
-            Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(Modifier.padding(horizontal = ScreenPadding), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 AsyncImage(
                     model = load.posterUrl,
                     contentDescription = load.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .width(120.dp)
+                        .width(110.dp)
                         .aspectRatio(2f / 3f)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                 )
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(load.name, style = MaterialTheme.typography.titleLarge)
-                    val saved = LibraryStore.contains(item.url)
-                    BlackButton(
-                        stringResource(if (saved) Res.string.remove_from_library else Res.string.add_to_library)
-                    ) { LibraryStore.toggle(item) }
-                    val movieData = (load as? MovieLoadResponse)?.dataUrl
-                    if (movieData != null) {
-                        if (DesktopProviders.isEmpty) {
-                            NoProvidersNote()
-                        } else {
-                            WhiteButton(stringResource(Res.string.play)) {
-                                onPlay(PlayRequest(load.name))
-                            }
-                        }
-                    }
+                    Text(load.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                     if (meta.isNotBlank()) {
                         Text(
                             meta,
@@ -149,16 +144,24 @@ private fun DetailContent(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (isMovie && canPlay) {
+                            WhiteButton(stringResource(Res.string.play)) { onPlay(PlayRequest(load.name)) }
+                        }
+                        BlackButton(
+                            stringResource(if (saved) Res.string.remove_from_library else Res.string.add_to_library)
+                        ) { LibraryStore.toggle(item) }
+                    }
                 }
             }
+        }
+        if ((isMovie || episodes.isNotEmpty()) && !canPlay) {
+            item { NoProvidersNote() }
         }
         val tags = load.tags.orEmpty()
         if (tags.isNotEmpty()) {
             item {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
+                ScrollableRow(contentPadding = PaddingValues(horizontal = ScreenPadding)) {
                     items(tags) { tag -> AssistChip(onClick = {}, label = { Text(tag) }) }
                 }
             }
@@ -168,7 +171,7 @@ private fun DetailContent(
                 Text(
                     plot,
                     style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(horizontal = ScreenPadding),
                 )
             }
         }
@@ -177,12 +180,9 @@ private fun DetailContent(
         if (cast.isNotEmpty()) {
             item { SectionTitle(stringResource(Res.string.cast)) }
             item {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
+                ScrollableRow {
                     items(cast) { data ->
-                        Column(Modifier.width(80.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Column(Modifier.width(84.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             AsyncImage(
                                 model = data.actor.image,
                                 contentDescription = data.actor.name,
@@ -197,7 +197,7 @@ private fun DetailContent(
                                 style = MaterialTheme.typography.bodySmall,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(top = 4.dp),
+                                modifier = Modifier.padding(top = 6.dp),
                             )
                         }
                     }
@@ -207,18 +207,19 @@ private fun DetailContent(
 
         if (episodes.isNotEmpty()) {
             item { SectionTitle(stringResource(Res.string.episodes)) }
-            if (DesktopProviders.isEmpty) item { NoProvidersNote(Modifier.padding(horizontal = 16.dp)) }
             bySeason.forEach { (season, list) ->
                 item {
                     Text(
                         stringResource(Res.string.season_n, season),
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 16.dp),
+                        modifier = Modifier.padding(horizontal = ScreenPadding),
                     )
                 }
                 items(list) { ep ->
-                    EpisodeRow(ep) { onPlay(PlayRequest("${load.name} · ${ep.name ?: ""}", ep.season, ep.episode)) }
+                    EpisodeRow(ep, enabled = canPlay) {
+                        onPlay(PlayRequest("${load.name} · ${ep.name ?: ""}", ep.season, ep.episode))
+                    }
                 }
             }
         }
@@ -227,11 +228,8 @@ private fun DetailContent(
         if (related.isNotEmpty()) {
             item { SectionTitle(stringResource(Res.string.recommendations)) }
             item {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(related) { PosterCard(it, { onOpen(it) }, Modifier.width(120.dp)) }
+                ScrollableRow {
+                    items(related) { PosterCard(it, { onOpen(it) }, Modifier.width(128.dp)) }
                 }
             }
         }
@@ -239,20 +237,15 @@ private fun DetailContent(
 }
 
 @Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-    )
-}
-
-@Composable
-private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
+private fun EpisodeRow(ep: Episode, enabled: Boolean, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth()
-            .then(if (DesktopProviders.isEmpty) Modifier else Modifier.clickable(onClick = onClick))
-            .padding(horizontal = 16.dp),
+        Modifier
+            .padding(horizontal = ScreenPadding)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(
@@ -269,11 +262,12 @@ private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        Column(Modifier.weight(1f)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             val number = ep.episode?.let { stringResource(Res.string.episode_n, it) }
             Text(
                 listOfNotNull(number, ep.name).joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -291,11 +285,11 @@ private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
 }
 
 @Composable
-private fun NoProvidersNote(modifier: Modifier = Modifier) {
+private fun NoProvidersNote() {
     Text(
         stringResource(Res.string.no_providers),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier,
+        modifier = Modifier.padding(horizontal = ScreenPadding),
     )
 }

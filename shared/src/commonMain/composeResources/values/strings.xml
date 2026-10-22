@@ -41,7 +41,7 @@
     <string name="recommendations">Recommended</string>
     <string name="episodes">Episodes</string>
     <string name="play">Play</string>
-    <string name="no_providers">No providers installed yet. Add one in Providers.kt to enable playback.</string>
+    <string name="no_providers">No sources installed yet. Add them in Settings › Sources.</string>
     <string name="resolving_links">Looking for sources…</string>
     <string name="no_links">No sources found for this title.</string>
     <string name="choose_source">Choose a source</string>
@@ -60,4 +60,5 @@
     <string name="installing">Installing…</string>
     <string name="plugin_error">Failed: %1$s · tap to remove</string>
     <string name="sources_summary">%1$d installed</string>
+    <string name="search_prompt">Search for movies and series</string>
 </resources>

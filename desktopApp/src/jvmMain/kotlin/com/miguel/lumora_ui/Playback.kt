@@ -1,5 +1,6 @@
 package com.lagradost.cloudstream4
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,8 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.lagradost.cloudstream3.AnimeLoadResponse
 import com.lagradost.cloudstream3.Episode
@@ -36,9 +37,8 @@ import com.lagradost.cloudstream3.TvSeriesLoadResponse
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream4.compose.WhiteButton
 import com.lagradost.cloudstream4.generated.resources.Res
-import com.lagradost.cloudstream4.generated.resources.arrow_back
-import com.lagradost.cloudstream4.generated.resources.back
 import com.lagradost.cloudstream4.generated.resources.choose_source
+import com.lagradost.cloudstream4.generated.resources.nav_downloads
 import com.lagradost.cloudstream4.generated.resources.no_links
 import com.lagradost.cloudstream4.generated.resources.pause
 import com.lagradost.cloudstream4.generated.resources.resolving_links
@@ -47,7 +47,6 @@ import com.lagradost.cloudstream4.generated.resources.vlc_missing
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import uk.co.caprica.vlcj.factory.discovery.NativeDiscovery
 import uk.co.caprica.vlcj.player.component.EmbeddedMediaPlayerComponent
@@ -59,8 +58,9 @@ private fun normalize(s: String) = s.lowercase().filter { it.isLetterOrDigit() }
 
 /** Finds the title in one provider and returns its playback `data`, or null when it has no match. */
 private suspend fun findData(api: MainAPI, request: PlayRequest): String? {
-    val wanted = normalize(request.title.substringBefore(" · "))
-    val results = api.search(request.title.substringBefore(" · ")).orEmpty()
+    val query = request.title.substringBefore(" · ")
+    val wanted = normalize(query)
+    val results = api.search(query).orEmpty()
     val match = results.firstOrNull { normalize(it.name) == wanted }
         ?: results.firstOrNull { normalize(it.name).startsWith(wanted) || wanted.startsWith(normalize(it.name)) }
         ?: return null
@@ -72,9 +72,11 @@ private suspend fun findData(api: MainAPI, request: PlayRequest): String? {
     }
 }
 
-private fun List<Episode>.pickEpisode(request: PlayRequest): String? =
-    firstOrNull { (it.season ?: 1) == (request.season ?: 1) && it.episode == request.episode }?.data
-        ?: if (request.season == null || request.season <= 1) firstOrNull { it.episode == request.episode }?.data else null
+private fun List<Episode>.pickEpisode(request: PlayRequest): String? {
+    val season = request.season ?: 1
+    return firstOrNull { (it.season ?: 1) == season && it.episode == request.episode }?.data
+        ?: if (season <= 1) firstOrNull { it.episode == request.episode }?.data else null
+}
 
 /** Resolves links with every installed provider, then lets the user pick one and plays it. */
 @Composable
@@ -89,7 +91,7 @@ fun PlaybackScreen(request: PlayRequest, onClose: () -> Unit) {
                 // A broken provider must not take the others down; also cap each one at 45 s
                 try {
                     withTimeoutOrNull(45_000) {
-                        val data = findData(api, request) ?: return@withTimeoutOrNull
+                        val data = findData(api, request) ?: return@withTimeoutOrNull null
                         api.loadLinks(data, false, { }, { synchronized(found) { found.add(it) } })
                     }
                 } catch (e: CancellationException) {
@@ -100,8 +102,8 @@ fun PlaybackScreen(request: PlayRequest, onClose: () -> Unit) {
             LoadState.Ready(synchronized(found) { found.sortedByDescending { it.quality } })
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
-            LoadState.Error(e.message ?: e.toString())
+        } catch (e: Throwable) {
+            LoadState.Error(e.message ?: e::class.simpleName.orEmpty())
         }
     }
 
@@ -112,28 +114,33 @@ fun PlaybackScreen(request: PlayRequest, onClose: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        BackButton(onClose)
+        ScreenHeader(title = request.title, onBack = onClose)
         when (val current = links) {
             is LoadState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(stringResource(Res.string.resolving_links), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             is LoadState.Error -> CenteredError(current.message, onClose)
             is LoadState.Ready -> if (current.value.isEmpty()) {
-                Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text(stringResource(Res.string.no_links), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                EmptyState(Res.drawable.nav_downloads, stringResource(Res.string.no_links))
             } else {
-                Text(
-                    stringResource(Res.string.choose_source),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-                LazyColumn(Modifier.fillMaxSize()) {
+                SectionTitle(stringResource(Res.string.choose_source))
+                LazyColumn(
+                    Modifier.fillMaxSize(),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        horizontal = ScreenPadding, vertical = 4.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     items(current.value) { l ->
                         val quality = if (l.quality > 0) " · ${l.quality}p" else ""
                         Text(
                             text = "${l.name}$quality",
-                            modifier = Modifier.fillMaxWidth().clickable { chosen = l }.padding(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainer)
+                                .clickable { chosen = l }
+                                .padding(16.dp),
                         )
                     }
                 }
@@ -142,27 +149,15 @@ fun PlaybackScreen(request: PlayRequest, onClose: () -> Unit) {
     }
 }
 
-@Composable
-internal fun BackButton(onClick: () -> Unit) {
-    IconButton(onClick = onClick, modifier = Modifier.padding(4.dp)) {
-        Icon(painterResource(Res.drawable.arrow_back), contentDescription = stringResource(Res.string.back))
-    }
-}
-
 /** VLC is a native library; vlcj only wraps it, so a VLC 64-bit install is required. */
-private val vlcAvailable: Boolean by lazy { NativeDiscovery().discover() }
+private val vlcAvailable: Boolean by lazy { runCatching { NativeDiscovery().discover() }.getOrDefault(false) }
 
 @Composable
 private fun PlayerScreen(title: String, link: ExtractorLink, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            BackButton(onBack)
-            Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-        }
+        ScreenHeader(title = title, onBack = onBack)
         if (!vlcAvailable) {
-            Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                Text(stringResource(Res.string.vlc_missing), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            EmptyState(Res.drawable.nav_downloads, stringResource(Res.string.vlc_missing))
             return@Column
         }
 
@@ -177,7 +172,7 @@ private fun PlayerScreen(title: String, link: ExtractorLink, onBack: () -> Unit)
             // VLC only understands these two headers as options
             val options = buildList {
                 if (link.referer.isNotBlank()) add(":http-referrer=${link.referer}")
-                (link.headers.entries.firstOrNull { it.key.equals("User-Agent", true) })
+                link.headers.entries.firstOrNull { it.key.equals("User-Agent", true) }
                     ?.let { add(":http-user-agent=${it.value}") }
             }
             component.mediaPlayer().media().play(link.url, *options.toTypedArray())
@@ -191,7 +186,7 @@ private fun PlayerScreen(title: String, link: ExtractorLink, onBack: () -> Unit)
 
         SwingPanel(factory = { component }, modifier = Modifier.weight(1f).fillMaxWidth())
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            Modifier.fillMaxWidth().padding(horizontal = ScreenPadding, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

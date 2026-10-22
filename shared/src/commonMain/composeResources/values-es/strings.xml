@@ -30,7 +30,7 @@
     <string name="recommendations">Recomendados</string>
     <string name="episodes">Episodios</string>
     <string name="play">Reproducir</string>
-    <string name="no_providers">Aún no hay proveedores instalados. Agrega uno en Providers.kt para activar la reproducción.</string>
+    <string name="no_providers">Aún no hay fuentes instaladas. Agrégalas en Ajustes › Fuentes.</string>
     <string name="resolving_links">Buscando fuentes…</string>
     <string name="no_links">No se encontraron fuentes para este título.</string>
     <string name="choose_source">Elige una fuente</string>
@@ -49,4 +49,5 @@
     <string name="installing">Instalando…</string>
     <string name="plugin_error">Falló: %1$s · toca para quitar</string>
     <string name="sources_summary">%1$d instaladas</string>
+    <string name="search_prompt">Busca películas y series</string>
 </resources>

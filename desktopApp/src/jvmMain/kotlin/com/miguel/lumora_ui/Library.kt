@@ -2,6 +2,7 @@ package com.lagradost.cloudstream4
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -13,6 +14,11 @@ import androidx.compose.ui.unit.dp
 import com.lagradost.cloudstream3.SearchResponse
 import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.newMovieSearchResponse
+import com.lagradost.cloudstream4.generated.resources.Res
+import com.lagradost.cloudstream4.generated.resources.empty_library
+import com.lagradost.cloudstream4.generated.resources.nav_library
+import com.lagradost.cloudstream4.generated.resources.title_library
+import org.jetbrains.compose.resources.stringResource
 import java.io.File
 
 /** A saved title: just what is needed to draw its poster and reopen its detail page. */
@@ -66,21 +72,24 @@ private fun SavedItem.toSearchResponse(): SearchResponse =
     tmdb.newMovieSearchResponse(name, url, TvType.Movie, false) { posterUrl = this@toSearchResponse.posterUrl }
 
 @Composable
-fun LibraryScreen(onOpen: (SearchResponse) -> Unit, empty: @Composable () -> Unit) {
-    if (LibraryStore.items.isEmpty()) {
-        empty()
-        return
-    }
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(120.dp),
-        contentPadding = PaddingValues(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        items(LibraryStore.items.toList()) { saved ->
-            val response = saved.toSearchResponse()
-            PosterCard(response, { onOpen(response) })
+fun LibraryScreen(onOpen: (SearchResponse) -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        ScreenHeader(stringResource(Res.string.title_library))
+        if (LibraryStore.items.isEmpty()) {
+            EmptyState(Res.drawable.nav_library, stringResource(Res.string.empty_library))
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(128.dp),
+                contentPadding = PaddingValues(ScreenPadding),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                items(LibraryStore.items.toList()) { saved ->
+                    val response = saved.toSearchResponse()
+                    PosterCard(response, { onOpen(response) })
+                }
+            }
         }
     }
 }

@@ -1,0 +1,38 @@
+name: Compilar Lumora para Windows (sin publicar release)
+
+# Solo compila el instalador MSI y lo deja como "artifact" descargable desde la pestaña Actions.
+# NO crea Release ni toca el APK, así que la app móvil nunca ve una actualización.
+# Se ejecuta al subir a la rama "windows-build" o a mano desde Actions.
+on:
+  push:
+    branches: [ windows-build ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Compilar instalador MSI
+        shell: bash
+        run: ./gradlew :desktopApp:packageMsi --stacktrace
+
+      - name: Subir MSI como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lumora-windows-msi
+          path: desktopApp/build/compose/binaries/main/msi/*.msi
+          if-no-files-found: error
