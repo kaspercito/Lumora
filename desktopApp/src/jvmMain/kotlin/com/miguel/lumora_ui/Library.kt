@@ -16,13 +16,14 @@ import com.lagradost.cloudstream3.TvType
 import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream4.generated.resources.Res
 import com.lagradost.cloudstream4.generated.resources.empty_library
+import com.lagradost.cloudstream4.generated.resources.library_count
 import com.lagradost.cloudstream4.generated.resources.nav_library
 import com.lagradost.cloudstream4.generated.resources.title_library
 import org.jetbrains.compose.resources.stringResource
 import java.io.File
 
 /** A saved title: just what is needed to draw its poster and reopen its detail page. */
-data class SavedItem(val url: String, val name: String, val posterUrl: String?)
+data class SavedItem(val url: String, val name: String, val posterUrl: String?, val apiName: String? = null)
 
 /**
  * Favorites, stored as a small tab-separated file (one title per line) so it survives restarts:
@@ -43,7 +44,7 @@ object LibraryStore {
                 file.readLines().forEach { line ->
                     val p = line.split('\t')
                     if (p.size >= 2 && p[0].isNotBlank()) {
-                        items.add(SavedItem(p[0], p[1], p.getOrNull(2)?.takeIf { it.isNotBlank() }))
+                        items.add(SavedItem(p[0], p[1], p.getOrNull(2)?.takeIf { it.isNotBlank() }, p.getOrNull(3)?.takeIf { it.isNotBlank() }))
                     }
                 }
             }
@@ -55,7 +56,7 @@ object LibraryStore {
     fun toggle(item: SearchResponse) {
         val existing = items.indexOfFirst { it.url == item.url }
         if (existing >= 0) items.removeAt(existing)
-        else items.add(0, SavedItem(item.url, item.name, item.posterUrl))
+        else items.add(0, SavedItem(item.url, item.name, item.posterUrl, item.apiName))
         save()
     }
 
@@ -63,26 +64,30 @@ object LibraryStore {
         runCatching {
             file.parentFile?.mkdirs()
             fun clean(s: String?) = (s ?: "").replace('\t', ' ').replace('\n', ' ').replace('\r', ' ')
-            file.writeText(items.joinToString("\n") { "${clean(it.url)}\t${clean(it.name)}\t${clean(it.posterUrl)}" })
+            file.writeText(items.joinToString("\n") { "${clean(it.url)}\t${clean(it.name)}\t${clean(it.posterUrl)}\t${clean(it.apiName)}" })
         }
     }
 }
 
 private fun SavedItem.toSearchResponse(): SearchResponse =
-    tmdb.newMovieSearchResponse(name, url, TvType.Movie, false) { posterUrl = this@toSearchResponse.posterUrl }
+    (SourceSelection.all.firstOrNull { it.name == apiName } ?: tmdb)
+        .newMovieSearchResponse(name, url, TvType.Movie, false) { posterUrl = this@toSearchResponse.posterUrl }
 
 @Composable
 fun LibraryScreen(onOpen: (SearchResponse) -> Unit) {
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader(stringResource(Res.string.title_library))
+        ScreenHeader(
+            stringResource(Res.string.title_library),
+            subtitle = LibraryStore.items.size.takeIf { it > 0 }?.let { stringResource(Res.string.library_count, it) },
+        )
         if (LibraryStore.items.isEmpty()) {
             EmptyState(Res.drawable.nav_library, stringResource(Res.string.empty_library))
         } else {
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(128.dp),
+                columns = GridCells.Adaptive(PosterWidth),
                 contentPadding = PaddingValues(ScreenPadding),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(22.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
                 items(LibraryStore.items.toList()) { saved ->

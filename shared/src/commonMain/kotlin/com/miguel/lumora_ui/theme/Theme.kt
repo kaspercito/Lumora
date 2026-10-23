@@ -3,6 +3,7 @@ package com.lagradost.cloudstream4.theme
 import androidx.compose.animation.core.InfiniteTransition
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -12,6 +13,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 
 enum class CloudStreamThemeMode {
     /** "Black" standard dark, #111111 backgrounds */
@@ -73,30 +75,64 @@ fun modeToTheme(mode : CloudStreamThemeMode, primaryColor: CloudStreamPrimaryCol
     return color
 }
 
-private fun CloudStreamColorScheme.toMaterial3ColorScheme() = if (isLight) {
-    lightColorScheme(
-        primary = primary,
-        background = background,
-        surface = surface,
-        surfaceVariant = surfaceVariant,
-        surfaceContainer = surfaceContainer,
-        onBackground = onBackground,
-        onSurface = onBackground,
-        onSurfaceVariant = onSurfaceVariant,
-        onPrimary = Color.White,
-    )
-} else {
-    darkColorScheme(
-        primary = primary,
-        background = background,
-        surface = surface,
-        surfaceVariant = surfaceVariant,
-        surfaceContainer = surfaceContainer,
-        onBackground = onBackground,
-        onSurface = onBackground,
-        onSurfaceVariant = onSurfaceVariant,
-        onPrimary = Color.White,
-    )
+private fun CloudStreamColorScheme.toMaterial3ColorScheme(): ColorScheme {
+    // Every role is filled in explicitly: anything left out falls back to Material's purple defaults,
+    // which is what made chips, rails, dialogs and menus look off-palette.
+    val tint = lerp(surface, primary, 0.22f)
+    val line = lerp(surfaceVariant, onBackground, 0.14f)
+    return if (isLight) {
+        lightColorScheme(
+            primary = primary,
+            onPrimary = Color.White,
+            primaryContainer = tint,
+            onPrimaryContainer = onBackground,
+            secondary = primary,
+            onSecondary = Color.White,
+            secondaryContainer = tint,
+            onSecondaryContainer = onBackground,
+            tertiary = primary,
+            background = background,
+            onBackground = onBackground,
+            surface = surface,
+            onSurface = onBackground,
+            surfaceVariant = surfaceVariant,
+            onSurfaceVariant = onSurfaceVariant,
+            surfaceTint = primary,
+            surfaceContainerLowest = background,
+            surfaceContainerLow = surfaceContainer,
+            surfaceContainer = surfaceContainer,
+            surfaceContainerHigh = surfaceVariant,
+            surfaceContainerHighest = surfaceVariant,
+            outline = onSurfaceVariant,
+            outlineVariant = line,
+        )
+    } else {
+        darkColorScheme(
+            primary = primary,
+            onPrimary = Color.White,
+            primaryContainer = tint,
+            onPrimaryContainer = onBackground,
+            secondary = primary,
+            onSecondary = Color.White,
+            secondaryContainer = tint,
+            onSecondaryContainer = onBackground,
+            tertiary = primary,
+            background = background,
+            onBackground = onBackground,
+            surface = surface,
+            onSurface = onBackground,
+            surfaceVariant = surfaceVariant,
+            onSurfaceVariant = onSurfaceVariant,
+            surfaceTint = primary,
+            surfaceContainerLowest = background,
+            surfaceContainerLow = surfaceContainer,
+            surfaceContainer = surfaceContainer,
+            surfaceContainerHigh = surfaceVariant,
+            surfaceContainerHighest = surfaceVariant,
+            outline = onSurfaceVariant,
+            outlineVariant = line,
+        )
+    }
 }
 
 internal val LocalSharedInfiniteTransition = staticCompositionLocalOf<InfiniteTransition> { throw NotImplementedError() }

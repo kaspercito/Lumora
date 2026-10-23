@@ -93,3 +93,9 @@ Los perfiles viven en cada celular; para pasar tu historial a otro teléfono usa
   líneas `package com.lagradost.cloudstream3` dentro de los archivos se dejaron a propósito: las extensiones
   se compilan contra ese nombre de paquete y dejarían de funcionar si se renombra.
 - Compilar local: `./gradlew assembleStableDebug` (Android Studio recomendado, JDK 17).
+
+## 🪟 Lumora para Windows – repositorios
+
+En **Ajustes → Fuentes** puedes añadir varios repositorios. Acepta: enlace directo a `repo.json`,
+`github.com/usuario/repo` (se prueban las ramas `builds`, `master` y `main`), enlaces `blob` de GitHub,
+`cloudstreamrepo://…` o un código corto. Atajos: `Esc` o `Alt + ←` para volver atrás.

@@ -1,0 +1,5 @@
+Pon aqui el VLC portable (ZIP de videolan.org, Windows 64 bits):
+  libvlc.dll
+  libvlccore.dll
+  plugins\   (carpeta completa)
+Despues compila el MSI de nuevo. Sin estos archivos, Lumora usa el VLC instalado en el sistema.

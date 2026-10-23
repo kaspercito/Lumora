@@ -48,6 +48,7 @@ object JwPlayerHelper {
         subtitleCallback: (SubtitleFile) -> Unit,
         headers: Map<String, String> = mapOf(),
     ): Boolean {
+        val script = resolveLinkVars(script)
         val sourceMatches = sourceRegex.findAll(script).flatMap { sourceMatch ->
             val match = sourceMatch.groupValues[1].addMarks("file", "label", "type")
             tryParseJson<List<Source>>(match).orEmpty()
@@ -59,7 +60,7 @@ object JwPlayerHelper {
                 try {
                     M3u8Helper.generateM3u8(
                         source = sourceName,
-                        streamUrl = cleanUrl,
+                        streamUrl = fixUrl(cleanUrl, mainUrl),
                         referer = mainUrl,
                         headers = headers,
                     )
@@ -139,8 +140,30 @@ object JwPlayerHelper {
         return sourceRegex.containsMatchIn(script)
     }
 
+    private val linksObjRegex = Regex("""(?:var|let|const)\s+links\s*=\s*(\{.*?\})\s*;""", RegexOption.DOT_MATCHES_ALL)
+    private val linksPairRegex = Regex("""["']?(\w+)["']?\s*:\s*["']([^"']*)["']""")
+    private val linksExprRegex = Regex("""\blinks\.\w+(?:\s*\|\|\s*links\.\w+)*""")
+
+    /**
+     * Algunos reproductores (VidHide/EarnVids) no ponen la URL en `sources`, sino una expresión JS:
+     * `{file:links.hls4||links.hls3||links.hls2}` con `var links={"hls4":"...",...}` más arriba.
+     * Eso no es JSON y fallaba el parseo; aquí se sustituye por la primera URL no vacía.
+     */
+    private fun resolveLinkVars(script: String): String {
+        val obj = linksObjRegex.find(script)?.groupValues?.get(1) ?: return script
+        val map = linksPairRegex.findAll(obj).associate { it.groupValues[1] to it.groupValues[2] }
+        if (map.isEmpty()) return script
+        return linksExprRegex.replace(script) { m ->
+            val value = Regex("""links\.(\w+)""").findAll(m.value)
+                .mapNotNull { map[it.groupValues[1]]?.takeIf { v -> v.isNotBlank() } }
+                .firstOrNull()
+            if (value != null) "\"" + value.replace("\"", "\\\"") + "\"" else m.value
+        }
+    }
+
     private fun fixUrl(url: String, mainUrl: String): String {
         return when {
+            url.startsWith("//") -> "https:" + url
             url.startsWith("/") -> mainUrl + url
             url.startsWith("http") -> url
             else -> "$mainUrl/$url"
